@@ -126,6 +126,7 @@ def register():
         smtp_port = int(os.environ.get('SMTP_PORT', 587))
         smtp_user = os.environ.get('SMTP_USER')
         smtp_pass = os.environ.get('SMTP_PASS')
+        smtp_sender = os.environ.get('SMTP_SENDER', smtp_user)
         
         body = f"""
 ⚡️ Welcome to BoltMatch! / ¡Bienvenido a BoltMatch!
@@ -143,7 +144,7 @@ Keep your words safe. Do not share your link. / Guarda tus palabras a buen recau
         # Specify UTF-8 for special characters like ⚡️
         msg = MIMEText(body, 'plain', 'utf-8')
         msg['Subject'] = 'BoltMatch Credentials ⚡️ Credenciales'
-        msg['From'] = smtp_user
+        msg['From'] = smtp_sender
         msg['To'] = email
         
         if smtp_user and smtp_pass and smtp_host:
