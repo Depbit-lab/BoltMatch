@@ -998,7 +998,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const email = regEmailInput.value;
             if (!email) return alert("Por favor, introduce un email válido.");
             
-            btnRegisterEmail.innerText = "⏳ Generando claves...";
+            const defaultRegisterLabel = translations[currentLang]?.btn_register_email || "Generar & Enviar por Email";
+            btnRegisterEmail.innerText = translations[currentLang]?.wait_keys || "⏳ Generando claves...";
             btnRegisterEmail.disabled = true;
 
             try {
@@ -1007,7 +1008,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email })
                 });
-                const data = await res.json();
+                let data = {};
+                try {
+                    data = await res.json();
+                } catch (_parseErr) {
+                    // Keep a controlled error message when backend returns non-JSON
+                }
+                
+                if (!res.ok) {
+                    throw new Error(data.error || `HTTP ${res.status}`);
+                }
                 
                 if (data.status === 'success' || data.status === 'debug') {
                     loginStatus.innerText = currentLang === 'es' ? "📧 Claves enviadas. Revisa tu bandeja de entrada." : "📧 Keys sent. Check your inbox.";
@@ -1016,12 +1026,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         alert(`¡Claves generadas!\n\nMnemonic: ${data.words}\n\nEn un entorno real se envía por email. Usa el enlace de la consola para entrar.`);
                     }
                 } else {
-                    throw new Error(data.error);
+                    throw new Error(data.error || "Registro fallido");
                 }
             } catch (err) {
                 console.error(err);
                 alert("Error en el registro: " + err.message);
-                btnRegisterEmail.innerText = "Generar & Enviar por Email";
+            } finally {
+                btnRegisterEmail.innerText = defaultRegisterLabel;
                 btnRegisterEmail.disabled = false;
             }
         });
