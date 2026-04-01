@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BoltMatch</title>
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#000000">
+    <link rel="apple-touch-icon" href="icon.png">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Nostr-Tools Bundle (for local key generation if NIP-07 not available) -->
+    <script src="https://unpkg.com/nostr-tools/lib/nostr.bundle.js"></script>
+    
+    <!-- QR Code & Crypto Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <!-- BIP39 for Mnemonic Support -->
+    <script src="https://cdn.jsdelivr.net/npm/bip39@3.1.0/src/index.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- LOGIN OVERLAY -->
+        <div id="login-overlay" class="login-overlay">
+            <div class="login-content">
+                <div class="logo large">
+                    <span class="lightning">⚡</span> BoltMatch
+                </div>
+                <p class="manifesto-subtitle" data-i18n="login_subtitle">Sovereign Connections on Nostr</p>
+                
+                <div class="login-actions">
+                    <button class="btn btn-primary" id="btn-nip07" style="width: 100%; margin-bottom: 1rem;">
+                        <span class="btn-icon">🔑</span> <span data-i18n="use_extension">Use Extension (NIP-07)</span>
+                    </button>
+                    
+                    <div style="display: flex; align-items: center; margin: 1rem 0; opacity: 0.3;">
+                        <hr style="flex: 1; border: 0.5px solid var(--border);">
+                        <span style="padding: 0 10px; font-size: 0.7rem;" data-i18n="or_divider">OR</span>
+                        <hr style="flex: 1; border: 0.5px solid var(--border);">
+                    </div>
+
+                     <div class="email-registration" style="text-align: center; margin-bottom: 2rem;">
+                        <p style="font-size: 0.8rem; margin-bottom: 0.8rem; opacity: 0.6;" data-i18n="reg_prompt">Create an account and receive your keys via email.</p>
+                        <input type="email" id="reg-email" placeholder="tu@email.com" class="input-field" style="width: 100%; margin-bottom: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); padding: 0.8rem; border-radius: 12px; color: white;">
+                        <button class="btn btn-secondary" id="btn-register-email" style="width: 100%;">
+                            <span class="btn-icon">📧</span> <span data-i18n="btn_register_email">Generate & Send via Email</span>
+                        </button>
+                    </div>
+
+                    <div class="manual-login" style="text-align: center; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                        <p style="font-size: 0.8rem; margin-bottom: 0.8rem; opacity: 0.6;" data-i18n="login_manual_prompt">Login with Mnemonic or nsec key.</p>
+                        <textarea id="login-mnemonic" placeholder="word1 word2 ... or nsec1..." class="input-field" style="width: 100%; height: 60px; margin-bottom: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); padding: 0.8rem; border-radius: 12px; color: white; resize: none;"></textarea>
+                        <button class="btn btn-secondary" id="btn-login-manual" style="width: 100%; background: transparent; border: 1px solid var(--primary); color: var(--primary);">
+                             <span data-i18n="btn_login_manual">Access with My Words ⚡</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="login-status" class="login-status"></div>
+            </div>
+        </div>
+
+        <!-- ONBOARDING OVERLAY -->
+        <div id="onboarding-overlay" class="login-overlay" style="display: none; opacity: 0;">
+            <div class="login-content" style="text-align: left; max-width: 400px; margin: 0 auto;">
+                <h2 style="font-size: 1.8rem; margin-bottom: 0.5rem;" data-i18n="ob_title">Create your profile</h2>
+                <p class="manifesto-subtitle" style="margin-bottom: 2rem;" data-i18n="ob_subtitle">Join the Nostr web of trust.</p>
+                
+                <form id="onboarding-form" class="onboarding-form">
+                    <div class="form-group">
+                        <label data-i18n="ob_name_label">What is your name?</label>
+                        <input type="text" id="ob-name" placeholder="Your name or handle" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label data-i18n="ob_gender_label">I am...</label>
+                        <div class="toggle-group" id="group-gender">
+                            <button type="button" class="toggle-btn active" data-val="hombre" data-i18n="male">Male</button>
+                            <button type="button" class="toggle-btn" data-val="mujer" data-i18n="female">Female</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label data-i18n="ob_seeking_label">Seeking to meet...</label>
+                        <div class="toggle-group" id="group-seeking">
+                            <button type="button" class="toggle-btn" data-val="mujeres" data-i18n="women">Women</button>
+                            <button type="button" class="toggle-btn active" data-val="hombres" data-i18n="men">Men</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label data-i18n="ob_zip_label">Postal Code (Public Geohash)</label>
+                        <input type="text" id="ob-zip" placeholder="Ex: 28001" autocomplete="postal-code" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label data-i18n="ob_bio_label">About Me (Bio)</label>
+                        <textarea id="ob-bio" placeholder="Tell the world who you are..." style="width: 100%; height: 80px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); padding: 0.8rem; border-radius: 12px; color: white; resize: none;"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                        <span style="font-size: 1.1rem; font-weight: bold;" data-i18n="ob_btn">Enter BoltMatch ⚡</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <span class="lightning">⚡</span> BoltMatch
+            </div>
+            <div class="zap-wallet" id="wallet-balance">
+                <span class="lightning">⚡</span> 1,200 sats
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="content-area">
+            
+            <!-- RADAR VIEW (Discovery) -->
+            <section id="view-radar" class="view active">
+                <div class="card-stack" id="radar-stack">
+                    <div id="radar-loader" style="text-align: center; color: var(--text-muted); padding-top: 50%;">
+                        <span class="lightning glow" style="font-size: 2rem; display: block; margin-bottom: 1rem; animation: pulse 1.5s infinite;">⚡</span>
+                        <span data-i18n="radar_connecting">Connecting with Nostr Relays...</span><br>
+                        <small data-i18n="radar_searching">Searching for profiles with reputation</small>
+                    </div>
+                </div>
+            </section>
+
+            <!-- INBOX VIEW -->
+            <section id="view-inbox" class="view">
+                <div class="view-header">
+                    <h2 data-i18n="inbox_title">Zaps & Messages</h2>
+                    <p class="subtitle" data-i18n="inbox_subtitle">Your connections prioritized by LN value.</p>
+                </div>
+                
+                <div class="message-list" id="inbox-list">
+                    <div style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                        <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem; opacity: 0.5;">📭</span>
+                        <span data-i18n="inbox_empty">Your inbox is empty.</span><br>
+                        <small data-i18n="inbox_hint">Try sending Zaps in the Radar.</small>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PROFILE VIEW -->
+            <section id="view-profile" class="view">
+                <div class="view-header centered">
+                    <div class="profile-avatar large" id="avatar-container">
+                        <img id="my-profile-pic" src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80" alt="My Profile">
+                        <input type="file" id="photo-upload" style="display: none;" accept="image/*">
+                        <button class="qr-btn" id="btn-edit-profile" data-i18n="btn_edit">
+                            Edit Profile
+                        </button>
+                    </div>
+                    <h2 id="profile-name-display" data-i18n="my_identity">My Nostr Identity</h2>
+                    <p class="pubkey-display">npub1...xyz89</p>
+                    <p id="profile-bio-display" style="font-size: 0.9rem; opacity: 0.7; margin: 0.5rem 2rem;"></p>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>85%</h3>
+                        <p>Coeficiente Autenticidad</p>
+                    </div>
+                    <div class="stat-card highlight">
+                        <h3>3</h3>
+                        <p>Recomendaciones (Wingman)</p>
+                    </div>
+                </div>
+
+                <div class="settings-list">
+                    <div class="setting-item" id="nav-item-reco">
+                        <span data-i18n="my_qr_label">Wingman (QR) Protocol</span>
+                        <button class="btn btn-secondary btn-sm" id="btn-generate-qr" data-i18n="open">Open</button>
+                    </div>
+                    <div class="setting-item">
+                        <span data-i18n="lang_title">App Language</span>
+                        <div class="toggle-group sm" id="group-lang">
+                            <button type="button" class="toggle-btn" data-val="en">EN</button>
+                            <button type="button" class="toggle-btn" data-val="es">ES</button>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <span data-i18n="match_pref">Match Preference</span>
+                        <span id="display-pref" class="status-info">...</span>
+                    </div>
+                    <div class="setting-item">
+                        <span data-i18n="local_location">Local Location</span>
+                        <span id="display-zip" class="status-info">...</span>
+                    </div>
+                    <div class="setting-item vertical">
+                        <div style="display:flex; justify-content:space-between; width:100%;">
+                            <span data-i18n="search_radius">Search Radius</span>
+                            <span id="display-radius" class="status-info">35 km</span>
+                        </div>
+                        <input type="range" id="radius-slider" min="1" max="500" value="35" class="slider" style="width:100%; margin-top:0.5rem;">
+                    </div>
+                    <div class="setting-item">
+                        <span data-i18n="nip05_status">NIP-05 Status (Identity)</span>
+                        <span class="status-verified" data-i18n="verified">Verified</span>
+                    </div>
+                    <div class="setting-item">
+                        <span data-i18n="zaps_today">Zaps Sent Today</span>
+                        <span id="zaps-sent-today">0</span>
+                    </div>
+                    <div class="setting-item">
+                        <span data-i18n="dating_mode">Dating Mode <span style="font-size: 0.6rem;opacity:0.6;">(#boltmatch)</span></span>
+                        <div class="toggle-switch active" id="toggle-optin" data-i18n="active">Active</div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-item" data-target="view-radar">
+                <span class="nav-icon">🧭</span>
+                <span class="nav-label" data-i18n="nav_radar">Radar</span>
+            </button>
+            <button class="nav-item active" data-target="view-inbox">
+                <span class="nav-icon">📩</span>
+                <span class="nav-label" data-i18n="nav_zaps">Zaps</span>
+                <span class="badge">2</span>
+            </button>
+            <button class="nav-item" data-target="view-profile">
+                <span class="nav-icon">👤</span>
+                <span class="nav-label" data-i18n="nav_wot">WoT</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Match Modal Overlay -->
+    <div class="modal-overlay" id="match-modal">
+        <div class="modal-content match-content">
+            <h2 class="match-title" data-i18n="match_title">It's a Match!</h2>
+            <p><span data-i18n="match_desc">A connection has been established with</span> <strong id="match-name"></strong>.</p>
+            <div class="match-avatars">
+                <img id="my-match-avatar" src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80" alt="Me">
+                <div class="match-heart">❤️</div>
+                <img id="their-match-avatar" src="" alt="Them">
+            </div>
+            <div class="match-actions">
+                <button class="btn btn-primary" id="btn-match-chat" style="width: 100%;" data-i18n="match_btn_chat">Write Now (Free)</button>
+                <button class="btn btn-secondary" id="btn-match-keep" style="width: 100%;" data-i18n="match_btn_keep">Keep Looking</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Modal Overlay -->
+    <div class="modal-overlay" id="qr-modal">
+        <div class="modal-content">
+            <h3>Protocolo Wingman</h3>
+            <p style="margin-bottom: 1rem; font-size: 0.9rem;">Endosa a personas reales en citas físicas para certificar su nivel de reputación en la red.</p>
+            
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                <button class="btn btn-primary" id="btn-show-qr" style="flex:1;">Mi QR</button>
+                <button class="btn btn-secondary" id="btn-scan-qr" style="flex:1;">Escanear</button>
+            </div>
+
+            <!-- Mostrar Mi QR -->
+            <div id="qr-view-section">
+                <div id="qrcode-out" style="display:flex; justify-content:center; background: white; padding: 12px; border-radius: 12px; margin: 0 auto; width: max-content;"></div>
+                <p style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted);">Muestra este código a otros usuarios de BoltMatch en persona.</p>
+            </div>
+
+            <!-- Escanear QR Ajeno -->
+            <div id="qr-scan-section" style="display:none;">
+                <div id="reader" style="width: 100%; border-radius: 10px; overflow: hidden; background: #fff;"></div>
+                <p style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted);">Apunta al código QR generado por tu cita.</p>
+            </div>
+
+            <button class="btn btn-secondary" style="width: 100%; margin-top: 1.5rem;" id="btn-close-modal">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal-content">
+            <h3 data-i18n="edit_title">Edit My Identity</h3>
+            <div class="form-group" style="margin-top:1rem;">
+                <label data-i18n="edit_name">Name / Handle</label>
+                <input type="text" id="edit-name" class="input-field" style="width:100%;" placeholder="Anonymous">
+            </div>
+            <div class="form-group" style="margin-top:1rem;">
+                <label data-i18n="edit_bio">Bio / Description</label>
+                <textarea id="edit-bio" class="input-field" style="width:100%; height:80px; resize:none;"></textarea>
+            </div>
+            <p style="font-size:0.7rem; opacity:0.5; margin-top:0.5rem;" data-i18n="upload_hint">Tip: Click your photo to upload a new one.</p>
+            <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+                <button class="btn btn-primary" id="btn-save-profile" style="flex:1;" data-i18n="save">Save</button>
+                <button class="btn btn-secondary" id="btn-close-edit" style="flex:1;" data-i18n="cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "short_name": "BoltMatch",
+  "name": "BoltMatch: Sovereign Dating",
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/512/000000/F5A623?text=%E2%9A%A1",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#000000",
+  "description": "Proof of Connection. No Noise. No Bots."
+}
