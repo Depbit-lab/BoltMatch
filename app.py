@@ -167,7 +167,6 @@ Keep your words safe. Do not share your link. / Guarda tus palabras a buen recau
         error_msg = "Registration Error: " + str(e)
         print(error_msg)
         return jsonify({"status": "error", "error": error_msg}), 500
-        return jsonify({"error": str(e)}), 500
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
